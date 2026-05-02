@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Added a powerful, calendar-aware date engine for complex arithmetic and natural language queries (e.g., `today + 3 weeks`).
 - Added new interval operators: `to`, `between` (exclusive), and `through` (inclusive).
-- Added support for timezone conversions (e.g., `now in "London"`).
+- Added support for timezone conversions (e.g., `now in "Japan"`).
 - Added explicit date and time constructors: `date()`, `datetime()`, `datetimeZ()`, and `parseDate()`.
 - Added support for forcing interval results into specific units (e.g., `today through tomorrow in hours`).
 

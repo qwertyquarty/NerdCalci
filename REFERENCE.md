@@ -985,7 +985,7 @@ Calculate the time between two dates or find out how many days have passed.
 Convert any date or time to another timezone. NerdCalci supports IANA identifiers, common aliases, and manual offsets.
 
 **Examples**:
-*   `now in "London"`
+*   `now in "Japan"`
 *   `now in "PST"` (Alias for America/Los_Angeles)
 *   `today + 2 hours in "Asia/Tokyo"`
 *   `now in "GMT+530"` (Manual offset)

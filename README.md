@@ -120,7 +120,7 @@ IzzyOnDroid">](https://apt.izzysoft.de/packages/com.vishaltelangre.nerdcalci)
   today through tomorrow in hours
   
   # Timezones
-  now in "London"
+  now in "Japan"
   datetimeZ(2024, 1, 1, 12, 0, 0, "UTC") in "Tokyo"
 
   today as iso8601
