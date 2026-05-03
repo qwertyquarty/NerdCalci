@@ -91,6 +91,7 @@ import androidx.compose.foundation.border
 import android.widget.Toast
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -529,7 +530,16 @@ fun CalculatorScreen(
     val canRedo = canRedoMap[fileId] ?: false
 
     LaunchedEffect(fileId, effectiveRationalMode) {
+        viewModel.setCurrentFileId(fileId)
         viewModel.recalculateFile(fileId, effectiveRationalMode)
+    }
+
+    DisposableEffect(fileId) {
+        onDispose {
+            if (viewModel.currentFileId.value == fileId) {
+                viewModel.setCurrentFileId(null)
+            }
+        }
     }
 
     val lines by viewModel.getLines(fileId).collectAsState(initial = emptyList())
