@@ -2250,6 +2250,81 @@ class MathEngineTest {
     }
 
     @Test
+    fun `user-defined function cannot access variables from linked files`() = runBlocking {
+        val remoteContext = MathContext(variables = mutableMapOf("x" to EvaluationResult(BigDecimal("10.0"))))
+        val loader = FakeFileContextLoader(mapOf("File B" to remoteContext))
+
+        testCalculate(
+            "f = file(\"File B\")",
+            "a(n) = f.x + n",
+            "a(1)",
+            loader = loader
+        ) { result ->
+            assertError("Cannot access file variables inside a function body", result, 2, loader)
+        }
+    }
+
+    @Test
+    fun `file reference via file call inside function body is not allowed`() = runBlocking {
+        val remoteContext = MathContext(variables = mutableMapOf("x" to EvaluationResult(BigDecimal("10.0"))))
+        val loader = FakeFileContextLoader(mapOf("File B" to remoteContext))
+
+        testCalculate(
+            "a(n) = file(\"File B\").x + n",
+            "a(1)",
+            loader = loader
+        ) { result ->
+            assertError("Cannot access file variables inside a function body", result, 1, loader)
+        }
+    }
+
+    @Test
+    fun `user-defined function cannot access local variables in the current file`() = testCalculate(
+        "x = 10",
+        "a(n) = x + n",
+        "a(1)"
+    ) { result ->
+        assertError("Unknown variable `x`", result, 2)
+    }
+
+    @Test
+    fun `user-defined function can access built-in constants`() = testCalculate(
+        "a(n) = PI + n",
+        "a(0)"
+    ) { result ->
+        assertEquals("3.1415926535897932384626433832795028841971", result[1].result)
+    }
+
+    @Test
+    fun `file reference cannot be passed as function argument`() = runBlocking {
+        val remoteContext = MathContext(variables = mutableMapOf("x" to EvaluationResult(BigDecimal("10.0"))))
+        val loader = FakeFileContextLoader(mapOf("File B" to remoteContext))
+
+        testCalculate(
+            "f = file(\"File B\")",
+            "a(arg) = arg.x + 1",
+            "a(f)",
+            loader = loader
+        ) { result ->
+            assertError("File references (like `f`) cannot be passed to functions. Pass the specific values you need instead (e.g., `a(f.variable)`).", result, 2, loader)
+        }
+    }
+
+    @Test
+    fun `file reference cannot be used in expressions`() = runBlocking {
+        val remoteContext = MathContext(variables = mutableMapOf("x" to EvaluationResult(BigDecimal("10.0"))))
+        val loader = FakeFileContextLoader(mapOf("File B" to remoteContext))
+
+        testCalculate(
+            "f = file(\"File B\")",
+            "f + 1",
+            loader = loader
+        ) { result ->
+            assertError("`f` is a file reference and cannot be used as a value. Use dot notation (e.g., `f.variable`) to access its contents.", result, 1, loader)
+        }
+    }
+
+    @Test
     fun `evaluate clears file linked state after reassignment to number`() = runBlocking {
         val remoteContext = MathContext(variables = mutableMapOf("x" to EvaluationResult(BigDecimal("20.0"))))
         val loader = FakeFileContextLoader(mapOf("File B" to remoteContext))
@@ -2265,22 +2340,20 @@ class MathEngineTest {
     }
 
     @Test
-    fun `evaluate remote function call self-reference loop triggers CircularReferenceException`() = runBlocking {
-        val fileBContext = MathContext()
+    fun `evaluate remote file self-reference loop triggers CircularReferenceException`() = runBlocking {
+        val loader = object : FileContextLoader {
+            override suspend fun loadContext(fileName: String, loadingStack: Set<String>): MathContext? {
+                if (fileName == "File B") {
+                    // File B contains: f = file("File B") and x = f.y
+                    // Evaluating f.y will trigger a recursive load of "File B"
+                    val lines = listOf(createLine("f = file(\"File B\")"), createLine("x = f.y"))
+                    return MathEngine.buildVariableState(lines, this, loadingStack)
+                }
+                return null
+            }
+        }
 
-        fileBContext.localFunctions["loopback"] = LocalFunction(
-            name = "loopback",
-            params = emptyList(),
-            body = listOf(
-                Statement.ExprStatement(Expr.MemberAccess(Expr.FunctionCall("file", listOf(Expr.StringLiteral("File B"))), "x"))
-            )
-        )
-
-        val loader = FakeFileContextLoader(mapOf(
-            "File B" to fileBContext
-        ))
-
-        testCalculate("file(\"File B\").loopback()", loader = loader) { result ->
+        testCalculate("file(\"File B\").x", loader = loader) { result ->
             assertError("File `File B` references itself, causing an endless loop", result, 0, loader)
         }
     }
@@ -3049,6 +3122,28 @@ class MathEngineTest {
             assertEquals("1/3", it[0].result)
             assertEquals("2/3", it[1].result)
         }
+    }
+
+    @Test
+    fun `formatDisplayResult avoids excessive trailing zeros in scientific notation when precision is Off`() {
+        val locale = Locale.US
+        val precisionOff = Constants.PRECISION_OFF
+
+        // Small difference
+        val result1 = MathEngine.formatDisplayResult("0.00000009", precisionOff, locale)
+        assertEquals("9.0E-8", result1)
+
+        // Very small value
+        val result2 = MathEngine.formatDisplayResult("0.00000000000000000000000000000000000000001", precisionOff, locale)
+        assertEquals("1.0E-41", result2)
+
+        // Significant digits are preserved
+        val result3 = MathEngine.formatDisplayResult("0.00000009123", precisionOff, locale)
+        assertEquals("9.123E-8", result3)
+
+        // Large whole numbers
+        val result4 = MathEngine.formatDisplayResult("1000000000000000", precisionOff, locale)
+        assertEquals("1.0E15", result4)
     }
 
 }
