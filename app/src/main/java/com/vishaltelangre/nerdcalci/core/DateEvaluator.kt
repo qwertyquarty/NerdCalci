@@ -98,7 +98,7 @@ object DateEvaluator {
      * @param inclusive If true, the end date is treated as +1 day (for "through" keyword).
      * @param inDays If true, returns DayCount instead of Duration.
      */
-    fun interval(from: DateTimeResult, to: DateTimeResult, inclusive: Boolean = false, projectionUnit: String? = null): DateTimeResult {
+    fun interval(from: DateTimeResult, to: DateTimeResult, inclusive: Boolean = false, projectionUnit: String? = null, absolute: Boolean = false): DateTimeResult {
         // When projecting to a time unit, use full instant precision if either operand has a time component.
         if (projectionUnit != null) {
             val unit = UnitConverter.findUnit(projectionUnit) ?: throw EvalException("Unknown unit `$projectionUnit`")
@@ -128,10 +128,12 @@ object DateEvaluator {
                 val totalSeconds = duration.seconds
 
                 if (projectionUnit.lowercase() in setOf("d", "day", "days")) {
-                    return DateTimeResult.DayCount(totalSeconds / 86400L)
+                    val days = totalSeconds / 86400L
+                    return DateTimeResult.DayCount(if (absolute) Math.abs(days) else days)
                 }
 
-                val value = UnitConverter.fromBase(BigDecimal.valueOf(totalSeconds), unit, emptyMap<String, EvaluationResult>()).toLong()
+                val baseValue = UnitConverter.fromBase(BigDecimal.valueOf(totalSeconds), unit, emptyMap<String, EvaluationResult>()).toLong()
+                val value = if (absolute) Math.abs(baseValue) else baseValue
                 return DateTimeResult.TimeCount(value, unit.symbols.first())
             } else {
                 // Both operands are plain dates — use the original LocalDate-based path.
@@ -141,11 +143,12 @@ object DateEvaluator {
 
                 val totalDays = ChronoUnit.DAYS.between(fromDate, toDate)
                 if (projectionUnit.lowercase() in setOf("d", "day", "days")) {
-                    return DateTimeResult.DayCount(totalDays)
+                    return DateTimeResult.DayCount(if (absolute) Math.abs(totalDays) else totalDays)
                 }
 
                 val totalSeconds = totalDays * 24 * 3600L
-                val value = UnitConverter.fromBase(BigDecimal.valueOf(totalSeconds), unit, emptyMap<String, EvaluationResult>()).toLong()
+                val baseValue = UnitConverter.fromBase(BigDecimal.valueOf(totalSeconds), unit, emptyMap<String, EvaluationResult>()).toLong()
+                val value = if (absolute) Math.abs(baseValue) else baseValue
                 return DateTimeResult.TimeCount(value, unit.symbols.first())
             }
         }
@@ -160,8 +163,9 @@ object DateEvaluator {
             // Apply inclusive (+1 day) only if the end operand was a plain date.
             val toZdt = if (inclusive && to is DateTimeResult.Date) rawToZdt.plusDays(1) else rawToZdt
 
-            val isBackward = fromZdt.isAfter(toZdt)
-            val (startZdt, endZdt) = if (isBackward) toZdt to fromZdt else fromZdt to toZdt
+            val naturalOrder = fromZdt.isAfter(toZdt)
+            val isBackward = if (absolute) false else naturalOrder
+            val (startZdt, endZdt) = if (naturalOrder) toZdt to fromZdt else fromZdt to toZdt
 
             val startOfEndDate = endZdt.toLocalDate().atStartOfDay(endZdt.zone)
             val timeDuration = java.time.Duration.between(startOfEndDate, endZdt)
@@ -213,8 +217,9 @@ object DateEvaluator {
         val rawToDate = toLocalDate(to)
         val toDate = if (inclusive) rawToDate.plusDays(1) else rawToDate
 
-        val isBackward = fromDate.isAfter(toDate)
-        val (start, end) = if (isBackward) toDate to fromDate else fromDate to toDate
+        val naturalOrder = fromDate.isAfter(toDate)
+        val isBackward = if (absolute) false else naturalOrder
+        val (start, end) = if (naturalOrder) toDate to fromDate else fromDate to toDate
 
         val period = Period.between(start, end)
         val totalDays = ChronoUnit.DAYS.between(start, end)
@@ -254,26 +259,6 @@ object DateEvaluator {
     fun yearInterval(fromYear: Int, toYear: Int): DateTimeResult.Duration {
         val years = (toYear - fromYear).toLong()
         return DateTimeResult.Duration(DateTimeDelta(years = years))
-    }
-
-    // ── Day-count queries ────────────────────────────────────────────────────
-
-    /** Returns the number of days from today to the given date (positive = future). */
-    fun daysTill(date: DateTimeResult): DateTimeResult.DayCount {
-        val days = ChronoUnit.DAYS.between(today, toLocalDate(date))
-        return DateTimeResult.DayCount(days)
-    }
-
-    /** Returns the number of days since the given date until today (positive = past). */
-    fun daysSince(date: DateTimeResult): DateTimeResult.DayCount {
-        val days = ChronoUnit.DAYS.between(toLocalDate(date), today)
-        return DateTimeResult.DayCount(days)
-    }
-
-    /** Returns the absolute number of days between two dates. */
-    fun daysBetween(a: DateTimeResult, b: DateTimeResult): DateTimeResult.DayCount {
-        val days = Math.abs(ChronoUnit.DAYS.between(toLocalDate(a), toLocalDate(b)))
-        return DateTimeResult.DayCount(days)
     }
 
     // ── Conversion ───────────────────────────────────────────────────────────
@@ -371,6 +356,22 @@ object DateEvaluator {
         val minute = zdt.minute.toString().padStart(2, '0')
         val amPm = if (zdt.hour < 12) "AM" else "PM"
         return "$displayHour:$minute $amPm"
+    }
+
+    // ── Component Extraction ────────────────────────────────────────────────
+    
+    fun getDay(dt: DateTimeResult): Long = toLocalDate(dt).dayOfMonth.toLong()
+
+    fun getMonth(dt: DateTimeResult): Long = toLocalDate(dt).monthValue.toLong()
+
+    fun getYear(dt: DateTimeResult): Long = toLocalDate(dt).year.toLong()
+
+    fun daysInMonth(dt: DateTimeResult): Long = toLocalDate(dt).lengthOfMonth().toLong()
+
+    fun daysInMonth(year: Int, month: Int): Long = try {
+        LocalDate.of(year, month, 1).lengthOfMonth().toLong()
+    } catch (e: Exception) {
+        throw EvalException("Invalid year/month for daysInMonth: $year, $month")
     }
 
     // ── Internal Helpers ─────────────────────────────────────────────────────

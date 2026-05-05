@@ -73,6 +73,7 @@
   - [Date arithmetic](#date-arithmetic)
   - [Intervals and duration queries](#intervals-and-duration-queries)
   - [Timezones](#timezones)
+  - [Date component extraction](#date-component-extraction)
   - [Output formats](#output-formats)
 
 ## 1. Basic math and operators
@@ -972,16 +973,21 @@ Durations can be combined freely: `2 years 3 months 1 week 5 days`.
 
 ### Intervals and duration queries
 
-Calculate the time between two dates or find out how many days have passed.
+Calculate the time between two dates or find out how many days have passed. You can also project the result into a specific time unit using `in <unit>`.
 
-| Operation           | Example                           | Result                     |
-| :------------------ | :-------------------------------- | :------------------------- |
-| **Interval**        | `date(2024, 1, 1) to today`       | `4 mo 1 wk` (Duration)     |
-| **Year interval**   | `1978 to 2021`                    | `43 y`                     |
-| **Days since**      | `days since date(2024, 1, 1)`     | `122 d` (Total days)       |
-| **Days till**       | `days till date(2024, 12, 25)`    | `237 d`                    |
-| **Days between**    | `days between today and tomorrow` | `1 d`                      |
-| **Inclusive count** | `today through tomorrow`          | `2 d` (Includes both days) |
+| Operation             | Example                                               | Result                     |
+| :-------------------- | :---------------------------------------------------- | :------------------------- |
+| **Interval**          | `date(2024, 1, 1) to today`                           | `4 mo 1 wk` (Duration)     |
+| **Year interval**     | `1978 to 2021`                                        | `43 y`                     |
+| **Days since**        | `days since date(2024, 1, 1)`                         | `122 d` (Total days)       |
+| **Days till**         | `days till date(2024, 12, 25)`                        | `237 d`                    |
+| **Days between**      | `days between today and tomorrow`                     | `1 d`                      |
+| **Absolute interval** | `between today and date(2025, 1, 1)`                  | `1 y 4 mo 4 d`             |
+| **Inclusive count**   | `today through tomorrow`                              | `2 d` (Includes both days) |
+| **Projection**        | `days since date(2024, 1, 1) in hours`                | `2928 h`                   |
+| **Distance**          | `days between date(2024,1,2) and date(2024,1,1) in s` | `86400 s`                  |
+
+> **Note**: While `to`, `through`, `since`, and `till` are signed (e.g., `tomorrow to today` is `-1 d`), the `between` operator is always absolute (e.g., `between tomorrow and today` is `1 d`).
 
 ### Timezones
 
@@ -994,6 +1000,17 @@ Convert any date or time to another timezone. NerdCalci supports IANA identifier
 *   `now in "GMT+530"` (Manual offset)
 
 **Common aliases**: `UTC`, `GMT`, `PST`, `EST`, `IST` (India), `JST` (Japan), `BST` (UK), `CET` (Europe).
+
+### Date component extraction
+
+Extract specific numeric components (day, month, or year) from a date or time value, or query the number of days in a given month. These functions return unitless numbers, making them easy to use in further numeric calculations.
+
+| Function            | Description                                   | Example                         | Result |
+| :------------------ | :-------------------------------------------- | :------------------------------ | :----- |
+| `getDay(date)`      | Extracts the day of the month (1-31).         | `getDay(date(2024, 12, 25))`    | `25`   |
+| `getMonth(date)`    | Extracts the month (1-12).                    | `getMonth(parseDate("2 June"))` | `6`    |
+| `getYear(date)`     | Extracts the 4-digit year.                    | `getYear(now)`                  | `2026` |
+| `daysInMonth(date)` | Returns total days in the given date's month. | `daysInMonth(1 month ago)`      | `30`   |
 
 ### Output formats
 

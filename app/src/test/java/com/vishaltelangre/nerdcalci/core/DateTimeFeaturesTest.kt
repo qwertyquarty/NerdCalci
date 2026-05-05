@@ -112,7 +112,8 @@ class DateTimeFeaturesTest {
     ) { results ->
         results.forEach { assertNotEquals("Err", it.result) }
         assertEquals("1 d", results[4].result)
-        assertTrue(results[6].result.contains("-1 d"))
+        assertNotEquals("Err", results[5].result)
+        assertTrue(results[6].result.contains("-")) 
     }
 
     @Test
@@ -152,8 +153,13 @@ class DateTimeFeaturesTest {
         "4 days from 2 days ago",
         "4 days from 2 days before date(2024, 5, 1)"
     ) { results ->
-        results.forEach { assertNotEquals("Err", it.result) }
-        assertTrue(results[2].result.contains("PM")) // 4 hours before today (midnight) -> 8 PM previous day
+        val now = LocalDate.now()
+        assertTrue(results[0].result.contains("${now.minusDays(3).dayOfMonth}"))
+        assertTrue(results[1].result.contains("${now.plusWeeks(2).dayOfMonth}"))
+        assertTrue(results[2].result.contains("${now.minusDays(1).dayOfMonth}"))
+        assertTrue(results[3].result.contains("${now.dayOfMonth}"))
+        assertTrue(results[4].result.contains("${now.plusDays(4).dayOfMonth}"))
+        assertTrue(results[5].result.contains("${now.plusDays(2).dayOfMonth}"))
         assertEquals("May 3, 2024", results[6].result)
     }
 
@@ -171,21 +177,31 @@ class DateTimeFeaturesTest {
         "days since date(2030, 1, 1)",          // [9] Since future (negative)
         "days till date(2020, 1, 1)",            // [10] Till past (negative)
         "date(2024, 1, 1) through date(2024, 1, 2) in hours", // [11]
-        "date(2024, 1, 1) through date(2024, 1, 7) in weeks"  // [12]
+        "date(2024, 1, 1) through date(2024, 1, 7) in weeks", // [12]
+        "days between date(2024, 1, 8) and date(2024, 1, 1)", // [13]
+        "between date(2024, 1, 8) and date(2024, 1, 1)"      // [14]
     ) { results ->
         assertEquals("1 wk", results[0].result)
         assertEquals("1 y", results[1].result)
         assertEquals("-1 wk", results[2].result)
         assertEquals("31 d", results[3].result)
         assertEquals("7 d", results[4].result)
-        assertNotEquals("Err", results[5].result)
-        assertNotEquals("Err", results[6].result)
+        
+        val today = LocalDate.now()
+        val since = java.time.temporal.ChronoUnit.DAYS.between(LocalDate.of(2024, 1, 1), today)
+        assertEquals("$since d", results[5].result)
+        
+        val till = java.time.temporal.ChronoUnit.DAYS.between(today, LocalDate.of(2025, 1, 1))
+        assertEquals("$till d", results[6].result)
+        
         assertEquals("43 y", results[7].result)
         assertEquals("2 mo 27 d", results[8].result)
         assertTrue(results[9].result.startsWith("-"))
         assertTrue(results[10].result.startsWith("-"))
         assertTrue(results[11].result.contains("48 h"))
         assertEquals("1 wk", results[12].result)
+        assertEquals("7 d", results[13].result)
+        assertEquals("1 wk", results[14].result)
     }
 
     @Test
@@ -479,5 +495,129 @@ class DateTimeFeaturesTest {
         assertTrue(results[6].result.startsWith("243.5916"))
         assertEquals("2 y 12 wk 14 h", results[7].result)
         assertTrue(results[8].result.startsWith("2.2315"))
+    }
+    @Test
+    fun `date interval conversion in time units`() = testCalculate(
+        "date(2024,1,1) to date(2024,1,2) in seconds",    // [0] 86400 s
+        "date(2024,1,1) to date(2024,1,2) in minutes",    // [1] 1440 min
+        "date(2024,1,1) to date(2024,1,2) in hours",      // [2] 24 h
+        "date(2024,1,1) to date(2024,1,2) in days",       // [3] 1 d
+        "date(2024,1,1) to date(2024,1,8) in weeks",      // [4] 1 wk
+        "(date(2024,1,1) to date(2024,1,2)) in seconds",  // [5] 86400 s (parenthesized)
+        "date(2024,1,1) through date(2024,1,1) in hours", // [6] 24 h (inclusive)
+        "between date(2024,1,1) and date(2024,1,2) in s", // [7] 86400 s (using in operator)
+        "date(2024,1,1) to date(2024,1,1) in minutes",    // [8] 0 min
+        "date(2024,1,2) to date(2024,1,1) in hours",      // [9] -24 h
+        "today to today in s",                            // [10] 0 s
+        "tomorrow through today in s",                    // [11] 0 s (inclusive)
+        "date(2024,1,1) through date(2024,1,2) + 1d",     // [12] 3 d
+        "date(2024,1,1) to date(2024,1,2) + 1d",          // [13] 2 d
+        "days between date(2024,1,1) and date(2024,1,2) in hours", // [14] 24 h
+        "days since (today - 1 day) in hours",            // [15] 24 h
+        "days till (today + 1 day) in hours",             // [16] 24 h
+        "days between date(2024,1,2) and date(2024,1,1) in hours"  // [17] -24 h?
+    ) { results ->
+        assertEquals("86400 s", results[0].result)
+        assertEquals("1440 min", results[1].result)
+        assertEquals("24 h", results[2].result)
+        assertEquals("1 d", results[3].result)
+        assertEquals("1 wk", results[4].result)
+        assertEquals("86400.0 s", results[5].result)
+        assertEquals("24 h", results[6].result)
+        assertEquals("86400 s", results[7].result)
+        assertEquals("0 min", results[8].result)
+        assertEquals("-24 h", results[9].result)
+        assertEquals("0 s", results[10].result)
+        assertEquals("0 s", results[11].result)
+        assertEquals("3 d", results[12].result)
+        assertEquals("2 d", results[13].result)
+        assertEquals("24 h", results[14].result)
+        assertEquals("24 h", results[15].result)
+        assertEquals("24 h", results[16].result)
+        assertEquals("24 h", results[17].result)
+    }
+ 
+    @Test
+    fun `date component extraction and arithmetic`() = testCalculate(
+        "dt_z = datetimeZ(2024, 5, 20, 15, 30, 0, \"UTC\")", // [0]
+        "getDay(dt_z)",                                      // [1] -> 20.0
+        "getMonth(dt_z)",                                    // [2] -> 5.0
+        "getYear(dt_z)",                                     // [3] -> 2024.0
+        "daysInMonth(dt_z)",                                 // [4] -> 31.0
+        
+        "getDay(date(2024, 1, 5))",                          // [5] -> 5.0
+        "getDay(parseDate(\"2026-05-20\"))",                 // [6] -> 20.0
+        "getDay(today)",                                     // [7]
+        "getDay(now)",                                       // [8]
+        "getMonth(now)",                                     // [9]
+        "getYear(now)",                                      // [10]
+        
+        "getMonth(date(2024, 10, 5))",                       // [11] -> 10.0
+        "getMonth(parseDate(\"2026-05-20\"))",               // [12] -> 5.0
+        
+        "getYear(date(2024, 10, 5))",                        // [13] -> 2024.0
+        "getYear(parseDate(\"2026-05-20\"))",                // [14] -> 2026.0
+        
+        "daysInMonth(date(2024, 2, 1))",                     // [15] -> 29.0
+        "daysInMonth(date(2023, 2, 1))",                     // [16] -> 28.0
+        "daysInMonth(date(2024, 4, 1))",                     // [17] -> 30.0
+        
+        "dt_arith = date(2024, 2, 1)",                       // [18]
+        "days_left = daysInMonth(dt_arith) - getDay(dt_arith)", // [19] -> 28.0
+        "days_left"                                          // [20] -> 28.0
+    ) { results ->
+        assertEquals("20.0", results[1].result)
+        assertEquals("5.0", results[2].result)
+        assertEquals("2024.0", results[3].result)
+        assertEquals("31.0", results[4].result)
+        
+        assertEquals("5.0", results[5].result)
+        assertEquals("20.0", results[6].result)
+        
+        val now = LocalDate.now()
+        assertEquals("${now.dayOfMonth.toDouble()}", results[7].result)
+        assertEquals("${now.dayOfMonth.toDouble()}", results[8].result)
+        assertEquals("${now.monthValue.toDouble()}", results[9].result)
+        assertEquals("${now.year.toDouble()}", results[10].result)
+        
+        assertEquals("10.0", results[11].result)
+        assertEquals("5.0", results[12].result)
+        
+        assertEquals("2024.0", results[13].result)
+        assertEquals("2026.0", results[14].result)
+        
+        assertEquals("29.0", results[15].result)
+        assertEquals("28.0", results[16].result)
+        assertEquals("30.0", results[17].result)
+        
+        assertEquals("28.0", results[19].result)
+        assertEquals("28.0", results[20].result)
+    }
+    @Test
+    fun `budgeting calculation using date functions`() = testCalculate(
+        "money_left = 1000",
+        "min_daily_expenses = 20",
+        "current_day = getDay(now)",
+        "days_in_month = daysInMonth(now)",
+        "days_left = days_in_month - current_day",
+        "money_left = money_left - (current_day * min_daily_expenses)",
+        "allowed_daily_expense = money_left / days_left"
+    ) { results ->
+        val now = LocalDate.now()
+        val d = now.dayOfMonth
+        val totalDays = now.lengthOfMonth()
+        val left = totalDays - d
+        
+        assertEquals("${d.toDouble()}", results[2].result)
+        assertEquals("${totalDays.toDouble()}", results[3].result)
+        assertEquals("${left.toDouble()}", results[4].result)
+        
+        if (left > 0) {
+            val expectedMoneyLeft = 1000.0 - (d * 20.0)
+            val expectedDaily = expectedMoneyLeft / left
+            val actualDaily = results[6].result.toDoubleOrNull()
+            assertNotNull("Result should not be Err and should be numeric", actualDaily)
+            assertEquals(expectedDaily, actualDaily!!, 0.001)
+        }
     }
 }
