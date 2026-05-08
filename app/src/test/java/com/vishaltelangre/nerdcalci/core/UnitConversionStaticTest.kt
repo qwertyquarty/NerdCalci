@@ -4527,4 +4527,94 @@ class UnitConversionStaticTest {
     }
 
 
+    @Test
+    fun `unit conversion static electricity`() = testCalculate(
+        "10 V in V",
+        "10 mV in V",
+        "10 kV in V",
+        "10 MV in V",
+        "10 µV in V",
+        "10 A in A",
+        "10 mA in A",
+        "10 µA in A",
+        "10 kA in A",
+        "10 Ω in Ω",
+        "10 mΩ in Ω",
+        "10 kΩ in Ω",
+        "10 MΩ in Ω",
+        "10 coulomb in coulomb",
+        "10 Ah in coulomb",
+        "10 Amin in coulomb",
+        "10 mAh in coulomb",
+        "10 µAh in coulomb",
+        "10 kAh in coulomb",
+        "10 ampere second in coulomb",
+        "10 farad in farad",
+        "10 mF in farad",
+        "10 µF in farad",
+        "10 nF in farad",
+        "10 pF in farad",
+        "10 H in H",
+        "10 mH in H",
+        "10 µH in H"
+    ) { result ->
+        assertApprox("V", 10.0, result[0].result.substringBefore(' ').toDouble())
+        assertApprox("mV", 0.01, result[1].result.substringBefore(' ').toDouble())
+        assertApprox("kV", 10000.0, result[2].result.substringBefore(' ').toDouble())
+        assertApprox("MV", 1.0E7, result[3].result.substringBefore(' ').toDouble())
+        assertApprox("µV", 1.0E-5, result[4].result.substringBefore(' ').toDouble())
+        
+        assertApprox("A", 10.0, result[5].result.substringBefore(' ').toDouble())
+        assertApprox("mA", 0.01, result[6].result.substringBefore(' ').toDouble())
+        assertApprox("µA", 1.0E-5, result[7].result.substringBefore(' ').toDouble())
+        assertApprox("kA", 10000.0, result[8].result.substringBefore(' ').toDouble())
+        
+        assertApprox("Ω", 10.0, result[9].result.substringBefore(' ').toDouble())
+        assertApprox("mΩ", 0.01, result[10].result.substringBefore(' ').toDouble())
+        assertApprox("kΩ", 10000.0, result[11].result.substringBefore(' ').toDouble())
+        assertApprox("MΩ", 1.0E7, result[12].result.substringBefore(' ').toDouble())
+        
+        assertApprox("coulomb", 10.0, result[13].result.substringBefore(' ').toDouble())
+        assertApprox("Ah", 36000.0, result[14].result.substringBefore(' ').toDouble())
+        assertApprox("Amin", 600.0, result[15].result.substringBefore(' ').toDouble())
+        assertApprox("mAh", 36.0, result[16].result.substringBefore(' ').toDouble())
+        assertApprox("µAh", 0.036, result[17].result.substringBefore(' ').toDouble())
+        assertApprox("kAh", 3.6E7, result[18].result.substringBefore(' ').toDouble())
+        assertApprox("ampere second", 10.0, result[19].result.substringBefore(' ').toDouble())
+        
+        assertApprox("farad", 10.0, result[20].result.substringBefore(' ').toDouble())
+        assertApprox("mF", 0.01, result[21].result.substringBefore(' ').toDouble())
+        assertApprox("µF", 1.0E-5, result[22].result.substringBefore(' ').toDouble())
+        assertApprox("nF", 1.0E-8, result[23].result.substringBefore(' ').toDouble())
+        assertApprox("pF", 1.0E-11, result[24].result.substringBefore(' ').toDouble())
+        
+        assertApprox("H", 10.0, result[25].result.substringBefore(' ').toDouble())
+        assertApprox("mH", 0.01, result[26].result.substringBefore(' ').toDouble())
+        assertApprox("µH", 1.0E-5, result[27].result.substringBefore(' ').toDouble())
+    }
+
+    @Test
+    fun `unit conversion static magnetism`() = testCalculate(
+        "10 Wb in Wb",
+        "10 mWb in Wb",
+        "10 T in T",
+        "10 mT in T",
+        "10 µT in T",
+        "10 G in T"
+    ) { result ->
+        assertApprox("Wb", 10.0, result[0].result.substringBefore(' ').toDouble())
+        assertApprox("mWb", 0.01, result[1].result.substringBefore(' ').toDouble())
+        assertApprox("T", 10.0, result[2].result.substringBefore(' ').toDouble())
+        assertApprox("mT", 0.01, result[3].result.substringBefore(' ').toDouble())
+        assertApprox("µT", 1.0E-5, result[4].result.substringBefore(' ').toDouble())
+        assertApprox("G", 0.001, result[5].result.substringBefore(' ').toDouble())
+    }
+
+    private fun assertApprox(message: String, expected: Double, actual: Double) {
+        val relTol = 1e-6
+        val minAbs = 1e-15
+        val delta = Math.max(Math.abs(expected) * relTol, minAbs)
+        assertEquals(message, expected, actual, delta)
+    }
 }
+

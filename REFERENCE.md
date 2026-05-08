@@ -63,6 +63,8 @@
   - [Force](#force)
   - [Fuel consumption](#fuel-consumption)
   - [Pressure](#pressure)
+  - [Electricity](#electricity)
+  - [Magnetism](#magnetism)
   - [CSS](#css)
     - [Changing the values](#changing-the-values)
 - [11. Numeral systems](#11-numeral-systems)
@@ -856,8 +858,9 @@ cos(60 degree) # 0.5
 | Milliwatt  | `mW`, `milliwatt`, `milliwatts`   | `10 mW` |
 | Kilowatt   | `kW`, `kilowatt`, `kilowatts`     | `10 kW` |
 | Megawatt   | `MW`, `megawatt`, `megawatts`     | `10 MW` |
-| Horsepower | `hp`, `horsepower`, `horsepowers` | `10 hp` |
 | Gigawatt   | `GW`, `gigawatt`, `gigawatts`     | `10 GW` |
+| Terawatt   | `TW`, `terawatt`, `terawatts`     | `10 TW` |
+| Horsepower | `hp`, `horsepower`, `horsepowers` | `10 hp` |
 
 ### Data
 
@@ -926,6 +929,59 @@ cos(60 degree) # 0.5
 | Ksi               | `ksi`                          | `10 ksi`  |
 | Torr              | `torr`, `mmHg`                 | `10 torr` |
 | Inches of Mercury | `inHg`                         | `10 inHg` |
+
+### Electricity
+
+| Unit               | Symbols (Aliases)                                                                                    | Example            |
+| :----------------- | :--------------------------------------------------------------------------------------------------- | :----------------- |
+| Volt               | `V`, `volt`, `volts`                                                                                 | `10 V`             |
+| Ampere             | `A`, `ampere`, `amperes`, `amp`, `amps`                                                              | `10 A`             |
+| Ohm                | `Ω`, `ohm`, `ohms`                                                                                   | `10 Ω`             |
+| Coulomb            | `coulomb`, `coulombs`                                                                                | `10 coulomb`       |
+| Ampere hour        | `Ah`, `ampere hour`, `ampere hours`, `amp hour`, `amp hours`                                         | `10 Ah`            |
+| Ampere minute      | `Amin`, `ampere minute`, `ampere minutes`, `amp minute`, `amp minutes`                               | `10 Amin`          |
+| Ampere second      | `ampere second`, `ampere seconds`, `amp second`, `amp seconds`                                       | `10 ampere second` |
+| Farad              | `farad`, `farads`                                                                                    | `10 farad`         |
+| Henry              | `H`, `henry`, `henrys`                                                                               | `10 H`             |
+| Milliampere        | `mA`, `milliampere`, `milliamperes`, `milliamp`, `milliamps`                                         | `10 mA`            |
+| Microampere        | `µA`, `uA`, `microampere`, `microamperes`, `microamp`                                                | `10 µA`            |
+| Milliohm           | `mΩ`, `mohm`, `milliohm`, `milliohms`                                                                | `10 mΩ`            |
+| Kilohm             | `kΩ`, `kohm`, `kilohm`, `kilohms`                                                                    | `10 kΩ`            |
+| Megohm             | `MΩ`, `Mohm`, `megohm`, `megohms`                                                                    | `10 MΩ`            |
+| Kiloampere hour    | `kAh`, `kiloampere hour`, `kiloampere hours`, `kiloamp hour`, `kiloamp hours`                        | `10 kAh`           |
+| Kiloampere minute  | `kAmin`, `kiloampere minute`, `kiloampere minutes`, `kiloamp minute`, `kiloamp minutes`              | `10 kAmin`         |
+| Kiloampere second  | `kAs`, `kiloampere second`, `kiloampere seconds`, `kiloamp second`, `kiloamp seconds`                | `10 kAs`           |
+| Milliamp hour      | `mAh`, `milliampere hour`, `milliampere hours`, `milliamp hour`, `milliamp hours`                    | `10 mAh`           |
+| Milliampere minute | `mAmin`, `milliampere minute`, `milliampere minutes`, `milliamp minute`, `milliamp minutes`          | `10 mAmin`         |
+| Milliampere second | `mAs`, `milliampere second`, `milliampere seconds`, `milliamp second`, `milliamp seconds`            | `10 mAs`           |
+| Microamp hour      | `µAh`, `uAh`, `microampere hour`, `microampere hours`, `microamp hour`, `microamp hours`             | `10 µAh`           |
+| Microampere minute | `µAmin`, `uAmin`, `microampere minute`, `microampere minutes`, `microamp minute`, `microamp minutes` | `10 µAmin`         |
+| Microampere second | `µAs`, `uAs`, `microampere second`, `microampere seconds`, `microamp second`, `microamp seconds`     | `10 µAs`           |
+| Millifarad         | `mF`, `millifarad`, `millifarads`                                                                    | `10 mF`            |
+| Microfarad         | `µF`, `uF`, `microfarad`, `microfarads`                                                              | `10 µF`            |
+| Nanofarad          | `nF`, `nanofarad`, `nanofarads`                                                                      | `10 nF`            |
+| Picofarad          | `pF`, `picofarad`, `picofarads`                                                                      | `10 pF`            |
+| Millihenry         | `mH`, `millihenry`, `millihenrys`                                                                    | `10 mH`            |
+| Microhenry         | `µH`, `uH`, `microhenry`, `microhenrys`                                                              | `10 µH`            |
+
+Dimension-safe electrical arithmetic is supported:
+- `V / A` results in `ohm`
+- `V / ohm` results in `A`
+- `V * A` results in `W`
+- `W / V` results in `A`
+- `A * h` results in `Ah`
+- `coulomb / s` results in `A`
+
+### Magnetism
+
+| Unit       | Symbols (Aliases)       | Example  |
+| :--------- | :---------------------- | :------- |
+| Weber      | `Wb`, `weber`, `webers` | `10 Wb`  |
+| Milliweber | `mWb`, `milliweber`     | `10 mWb` |
+| Tesla      | `T`, `tesla`, `teslas`  | `10 T`   |
+| Millitesla | `mT`, `millitesla`      | `10 mT`  |
+| Microtesla | `µT`, `microtesla`      | `10 µT`  |
+| Gauss      | `G`, `gauss`            | `10 G`   |
 
 ### CSS
 
