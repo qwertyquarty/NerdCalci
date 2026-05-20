@@ -29,26 +29,33 @@ fun DeleteFileDialog(
     onDismiss: () -> Unit,
     onConfirm: suspend () -> Boolean
 ) {
+    var isDeleting by remember { mutableStateOf(false) }
     var deleteError by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
     fun confirmDelete() {
+        if (isDeleting) return
+        isDeleting = true
         coroutineScope.launch {
-            val success = runCatching { onConfirm() }
-                .getOrElse { throwable ->
-                    deleteError = throwable.message ?: "Failed to delete file"
-                    false
+            try {
+                val success = runCatching { onConfirm() }
+                    .getOrElse { throwable ->
+                        deleteError = throwable.message ?: "Failed to delete file"
+                        false
+                    }
+                if (success) {
+                    onDismiss()
+                } else if (deleteError == null) {
+                    deleteError = "Failed to delete file"
                 }
-            if (success) {
-                onDismiss()
-            } else if (deleteError == null) {
-                deleteError = "Failed to delete file"
+            } finally {
+                isDeleting = false
             }
         }
     }
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { if (!isDeleting) onDismiss() },
         title = { Text("Delete file?") },
         text = {
             Column {
@@ -65,13 +72,91 @@ fun DeleteFileDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { confirmDelete() }
+                onClick = { confirmDelete() },
+                enabled = !isDeleting
             ) {
-                Text("Delete", color = MaterialTheme.colorScheme.error)
+                Text("Delete", color = if (isDeleting) MaterialTheme.colorScheme.error.copy(alpha = 0.38f) else MaterialTheme.colorScheme.error)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(
+                onClick = onDismiss,
+                enabled = !isDeleting
+            ) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+/**
+ * Reusable confirmation dialog for deleting multiple files.
+ */
+@Composable
+fun DeleteFilesDialog(
+    count: Int,
+    onDismiss: () -> Unit,
+    onConfirm: suspend () -> Boolean
+) {
+    var isDeleting by remember { mutableStateOf(false) }
+    var deleteError by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    fun confirmDelete() {
+        if (isDeleting) return
+        isDeleting = true
+        coroutineScope.launch {
+            try {
+                val success = runCatching { onConfirm() }
+                    .getOrElse { throwable ->
+                        deleteError = throwable.message ?: "Failed to delete files"
+                        false
+                    }
+                if (success) {
+                    onDismiss()
+                } else if (deleteError == null) {
+                    deleteError = "Failed to delete files"
+                }
+            } finally {
+                isDeleting = false
+            }
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = { if (!isDeleting) onDismiss() },
+        title = { Text(if (count == 1) "Delete file?" else "Delete $count files?") },
+        text = {
+            Column {
+                Text(
+                    if (count == 1)
+                        "This will permanently delete the selected file and all its contents. This action cannot be undone."
+                    else
+                        "This will permanently delete the $count selected files and all their contents. This action cannot be undone."
+                )
+                if (deleteError != null) {
+                    Text(
+                        text = deleteError ?: "",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.labelMedium,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { confirmDelete() },
+                enabled = !isDeleting
+            ) {
+                Text("Delete", color = if (isDeleting) MaterialTheme.colorScheme.error.copy(alpha = 0.38f) else MaterialTheme.colorScheme.error)
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                enabled = !isDeleting
+            ) {
                 Text("Cancel")
             }
         }

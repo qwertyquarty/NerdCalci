@@ -68,7 +68,9 @@ import com.vishaltelangre.nerdcalci.ui.calculator.CalculatorViewModel
 import com.vishaltelangre.nerdcalci.ui.calculator.HomeUiEvent
 import com.vishaltelangre.nerdcalci.core.LaunchMode
 import com.vishaltelangre.nerdcalci.ui.components.SectionHeader
-import com.vishaltelangre.nerdcalci.ui.components.addDismissibleFileItems
+import com.vishaltelangre.nerdcalci.ui.components.addHomeFileItems
+import com.vishaltelangre.nerdcalci.ui.components.DeleteFilesDialog
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Check
 import kotlinx.coroutines.CoroutineScope
@@ -113,6 +115,24 @@ fun HomeScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
     var showSortMenu by remember { mutableStateOf(false) }
+
+    var isSelectionMode by rememberSaveable { mutableStateOf(false) }
+    var selectedFileIds by rememberSaveable { mutableStateOf(emptySet<Long>()) }
+    var showBatchDeleteDialog by remember { mutableStateOf(false) }
+
+    fun exitSelectionMode() {
+        selectedFileIds = emptySet()
+        isSelectionMode = false
+    }
+
+    fun toggleFileSelection(fileId: Long) {
+        selectedFileIds = if (selectedFileIds.contains(fileId)) {
+            selectedFileIds - fileId
+        } else {
+            selectedFileIds + fileId
+        }
+        isSelectionMode = selectedFileIds.isNotEmpty()
+    }
 
     // Get app name from strings.xml
     val appName = context.getString(R.string.app_name)
@@ -164,12 +184,48 @@ fun HomeScreen(
         }
     }
 
+    BackHandler(enabled = isSelectionMode) {
+        exitSelectionMode()
+    }
+
     val visiblePinnedFiles = files?.filter { it.isPinned } ?: emptyList()
     val visibleUnpinnedFiles = files?.filterNot { it.isPinned } ?: emptyList()
 
     Scaffold(
         topBar = {
-                if (files?.isNotEmpty() == true) {
+            if (isSelectionMode) {
+                TopAppBar(
+                    title = { Text("${selectedFileIds.size} selected", color = MaterialTheme.colorScheme.onSurface) },
+                    navigationIcon = {
+                        IconButton(onClick = { exitSelectionMode() }) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Cancel selection",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    },
+                    actions = {
+                        IconButton(
+                            onClick = { showBatchDeleteDialog = true },
+                            enabled = selectedFileIds.isNotEmpty()
+                        ) {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = "Delete selected files",
+                                tint = if (selectedFileIds.isNotEmpty()) {
+                                    MaterialTheme.colorScheme.onSurface
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                                }
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background
+                    )
+                )
+            } else if (files?.isNotEmpty() == true) {
                 TopAppBar(
                     title = { Text(appName, color = MaterialTheme.colorScheme.onSurface) },
                     navigationIcon = {
@@ -417,8 +473,11 @@ fun HomeScreen(
                         HomeFileList(
                             visiblePinnedFiles = visiblePinnedFiles,
                             visibleUnpinnedFiles = visibleUnpinnedFiles,
-                            excludedFileIds = excludedFileIds,
+                            isSelectionMode = isSelectionMode,
+                            selectedFileIds = selectedFileIds,
                             onFileClick = onFileClick,
+                            onLongClick = { id -> toggleFileSelection(id) },
+                            onToggleSelect = { id -> toggleFileSelection(id) },
                             coroutineScope = coroutineScope,
                             snackbarHostState = snackbarHostState,
                             context = context,
@@ -429,8 +488,11 @@ fun HomeScreen(
                     HomeFileList(
                         visiblePinnedFiles = visiblePinnedFiles,
                         visibleUnpinnedFiles = visibleUnpinnedFiles,
-                        excludedFileIds = excludedFileIds,
+                        isSelectionMode = isSelectionMode,
+                        selectedFileIds = selectedFileIds,
                         onFileClick = onFileClick,
+                        onLongClick = { id -> toggleFileSelection(id) },
+                        onToggleSelect = { id -> toggleFileSelection(id) },
                         coroutineScope = coroutineScope,
                         snackbarHostState = snackbarHostState,
                         context = context,
@@ -439,6 +501,20 @@ fun HomeScreen(
                 }
             }
         }
+
+        if (showBatchDeleteDialog) {
+            DeleteFilesDialog(
+                count = selectedFileIds.size,
+                onDismiss = { showBatchDeleteDialog = false },
+                onConfirm = {
+                    val success = viewModel.deleteFiles(context, selectedFileIds)
+                    if (success) {
+                        exitSelectionMode()
+                    }
+                    success
+                }
+            )
+        }
     }
 }
 
@@ -446,8 +522,11 @@ fun HomeScreen(
 private fun HomeFileList(
     visiblePinnedFiles: List<FileEntity>,
     visibleUnpinnedFiles: List<FileEntity>,
-    excludedFileIds: Set<Long>,
+    isSelectionMode: Boolean,
+    selectedFileIds: Set<Long>,
     onFileClick: (Long) -> Unit,
+    onLongClick: (Long) -> Unit,
+    onToggleSelect: (Long) -> Unit,
     coroutineScope: CoroutineScope,
     snackbarHostState: SnackbarHostState,
     context: android.content.Context,
@@ -460,9 +539,10 @@ private fun HomeFileList(
 
         if (visiblePinnedFiles.isNotEmpty()) {
             item { SectionHeader(title = "PINNED") }
-            addDismissibleFileItems(
+            addHomeFileItems(
                 files = visiblePinnedFiles,
-                excludedIds = excludedFileIds,
+                isSelectionMode = isSelectionMode,
+                selectedFileIds = selectedFileIds,
                 onFileClick = onFileClick,
                 onRename = { id, name ->
                     coroutineScope.launch {
@@ -480,8 +560,8 @@ private fun HomeFileList(
                     }
                 },
                 onTogglePin = { id -> viewModel.togglePinFile(id) },
-                onUndo = { id: Long -> viewModel.undoHideFile(id) },
-                onDismiss = { id: Long -> viewModel.hideFile(id) },
+                onLongClick = onLongClick,
+                onToggleSelect = onToggleSelect,
                 viewModel = viewModel
             )
         }
@@ -492,9 +572,10 @@ private fun HomeFileList(
                     title = if (visiblePinnedFiles.isNotEmpty()) "ALL FILES" else "FILES"
                 )
             }
-            addDismissibleFileItems(
+            addHomeFileItems(
                 files = visibleUnpinnedFiles,
-                excludedIds = excludedFileIds,
+                isSelectionMode = isSelectionMode,
+                selectedFileIds = selectedFileIds,
                 onFileClick = onFileClick,
                 onRename = { id, name ->
                     coroutineScope.launch {
@@ -512,8 +593,8 @@ private fun HomeFileList(
                     }
                 },
                 onTogglePin = { id -> viewModel.togglePinFile(id) },
-                onUndo = { id: Long -> viewModel.undoHideFile(id) },
-                onDismiss = { id: Long -> viewModel.hideFile(id) },
+                onLongClick = onLongClick,
+                onToggleSelect = onToggleSelect,
                 viewModel = viewModel
             )
         }
