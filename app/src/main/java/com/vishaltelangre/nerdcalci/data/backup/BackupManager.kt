@@ -372,7 +372,7 @@ object BackupManager {
     }
 
     private suspend fun writeBackupZip(context: Context, dao: CalculatorDao, outputStream: OutputStream): Int {
-        val filesList = dao.getAllFiles().first()
+        val filesList = dao.getAllFilesSync() + listOfNotNull(dao.getGlobalFile())
         var exportedCount = 0
 
         ZipOutputStream(outputStream).use { zipOut ->
@@ -386,6 +386,7 @@ object BackupManager {
                         id = file.syncId,
                         isPinned = file.isPinned,
                         isLocked = file.isLocked,
+                        isGlobal = file.isGlobal,
                         lastModified = file.lastModified,
                         createdAt = file.createdAt,
                         contentHash = contentHash
@@ -417,7 +418,7 @@ object BackupManager {
         onProgress: suspend (current: Int, total: Int, fileName: String) -> Unit,
         onConflict: suspend (fileName: String, localModified: Long, zipModified: Long) -> ConflictResolution
     ): RestoreResult {
-        val existingFiles = dao.getAllFiles().first()
+        val existingFiles = dao.getAllFilesSync() + listOfNotNull(dao.getGlobalFile())
         val existingNames = existingFiles.map { it.name }.toMutableSet()
         var overwrittenCount = 0
         var skippedCount = 0
@@ -482,43 +483,54 @@ object BackupManager {
                              val expressions = parsed.expressions
                              val metadata = parsed.metadata
 
-                            var isOverwrite = false
-                            val finalFileName = if (existingNames.contains(fileName)) {
-                                val existingFile = dao.getFileByName(fileName)
-                                val localModified = existingFile?.lastModified ?: 0L
-                                val zipModified = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                                    entry.lastModifiedTime?.toMillis() ?: entry.time
-                                } else {
-                                    entry.time
-                                }
-                                val decision = onConflict(fileName, localModified, zipModified)
-                                if (decision == ConflictResolution.KEEP_LOCAL_FILE) {
-                                    skippedCount++
-                                    zipIn.closeEntry()
-                                    entry = zipIn.nextEntry
-                                    continue
-                                }
-                                if (decision == ConflictResolution.KEEP_BOTH_FILES) {
-                                    addedCount++
-                                    var suffixCount = 1
-                                    var uniqueName = fileName
-                                    while (existingNames.contains(uniqueName)) {
-                                        uniqueName = "$fileName ($suffixCount)"
-                                        suffixCount++
-                                    }
-                                    uniqueName
-                                } else {
-                                    if (existingFile != null) {
-                                        fileToDelete = existingFile
-                                        isOverwrite = true
-                                        overwrittenCount++
-                                    }
-                                    "${fileName}_importing_${System.currentTimeMillis()}"
-                                }
-                            } else {
-                                addedCount++
-                                fileName
-                            }
+                             var isOverwrite = false
+                             val finalFileName = if (metadata.isGlobal) {
+                                 val existingGlobal = dao.getGlobalFile()
+                                 if (existingGlobal != null) {
+                                     fileToDelete = existingGlobal
+                                     isOverwrite = true
+                                     overwrittenCount++
+                                     "${fileName}_importing_${System.currentTimeMillis()}"
+                                 } else {
+                                     addedCount++
+                                     fileName
+                                 }
+                             } else if (existingNames.contains(fileName)) {
+                                 val existingFile = dao.getFileByName(fileName)
+                                 val localModified = existingFile?.lastModified ?: 0L
+                                 val zipModified = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                                     entry.lastModifiedTime?.toMillis() ?: entry.time
+                                 } else {
+                                     entry.time
+                                 }
+                                 val decision = onConflict(fileName, localModified, zipModified)
+                                 if (decision == ConflictResolution.KEEP_LOCAL_FILE) {
+                                     skippedCount++
+                                     zipIn.closeEntry()
+                                     entry = zipIn.nextEntry
+                                     continue
+                                 }
+                                 if (decision == ConflictResolution.KEEP_BOTH_FILES) {
+                                     addedCount++
+                                     var suffixCount = 1
+                                     var uniqueName = fileName
+                                     while (existingNames.contains(uniqueName)) {
+                                         uniqueName = "$fileName ($suffixCount)"
+                                         suffixCount++
+                                     }
+                                     uniqueName
+                                 } else {
+                                     if (existingFile != null) {
+                                         fileToDelete = existingFile
+                                         isOverwrite = true
+                                         overwrittenCount++
+                                     }
+                                     "${fileName}_importing_${System.currentTimeMillis()}"
+                                 }
+                             } else {
+                                 addedCount++
+                                 fileName
+                             }
 
                             val entryModifiedTime = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                                 entry.lastModifiedTime?.toMillis() ?: entry.time
@@ -558,6 +570,7 @@ object BackupManager {
                                     createdAt = finalCreateTime,
                                     isPinned = metadata.isPinned,
                                     isLocked = metadata.isLocked,
+                                    isGlobal = metadata.isGlobal,
                                     syncId = syncId
                                 )
                             )
@@ -566,6 +579,7 @@ object BackupManager {
                                 name = finalFileName,
                                 lastModified = finalModifiedTime,
                                 createdAt = finalCreateTime,
+                                isGlobal = metadata.isGlobal,
                                 syncId = syncId
                             )
                             insertedFiles.add(currentInsertedFile)

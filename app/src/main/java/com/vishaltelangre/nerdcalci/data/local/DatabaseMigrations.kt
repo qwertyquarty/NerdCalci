@@ -88,22 +88,30 @@ object DatabaseMigrations {
         }
     }
 
-    /**
-     * All migrations in order.
-     * Add new migrations to this array as the database evolves.
-     */
     val MIGRATION_6_7 = object : Migration(6, 7) {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL("ALTER TABLE files ADD COLUMN isLocked INTEGER NOT NULL DEFAULT 0")
         }
     }
 
+    val MIGRATION_7_8 = object : Migration(7, 8) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE files ADD COLUMN isGlobal INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_files_isGlobal_unique ON files(isGlobal) WHERE isGlobal = 1")
+        }
+    }
+
+    /**
+     * All migrations in order.
+     * Add new migrations to this array as the database evolves.
+     */
     val ALL_MIGRATIONS = arrayOf(
         MIGRATION_1_2,
         MIGRATION_2_3,
         MIGRATION_3_4,
         MIGRATION_4_5,
         MIGRATION_5_6,
-        MIGRATION_6_7
+        MIGRATION_6_7,
+        MIGRATION_7_8
     )
 }

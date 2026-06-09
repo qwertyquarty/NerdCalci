@@ -45,17 +45,20 @@ open class FakeCalculatorDao : CalculatorDao() {
     override fun getAllFiles(): Flow<List<FileEntity>> =
         _files.map { files ->
             files
-                .filter { file -> !file.isTemporary }
+                .filter { file -> !file.isTemporary && !file.isGlobal }
                 .sortedWith(compareByDescending<FileEntity> { file -> file.isPinned }.thenByDescending { file -> file.lastModified })
         }
 
     override suspend fun getAllFilesSync(): List<FileEntity> =
         _files.value
-            .filter { file -> !file.isTemporary }
+            .filter { file -> !file.isTemporary && !file.isGlobal }
             .sortedWith(compareByDescending<FileEntity> { file -> file.isPinned }.thenByDescending { file -> file.lastModified })
 
     override suspend fun getTemporaryFile(): FileEntity? = 
         _files.value.find { it.isTemporary }
+
+    override suspend fun getGlobalFile(): FileEntity? = 
+        _files.value.find { it.isGlobal }
 
     override suspend fun getUntitledFileNames(): List<String> =
         _files.value.filter { !it.isTemporary && it.name.startsWith("Untitled ") }.map { it.name }
@@ -176,7 +179,8 @@ open class FakeCalculatorDao : CalculatorDao() {
             isPinned = false,
             syncId = newSyncId,
             lastModified = lastModified ?: now,
-            isTemporary = false
+            isTemporary = false,
+            isGlobal = false
         )
         _files.value = _files.value + newFile
         
