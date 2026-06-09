@@ -1,0 +1,1 @@
+- Fixed app crashing on startup due to a database index mismatch.

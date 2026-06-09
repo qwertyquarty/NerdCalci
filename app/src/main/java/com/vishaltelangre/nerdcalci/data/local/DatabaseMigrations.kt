@@ -101,6 +101,12 @@ object DatabaseMigrations {
         }
     }
 
+    val MIGRATION_8_9 = object : Migration(8, 9) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("DROP INDEX IF EXISTS index_files_isGlobal_unique")
+        }
+    }
+
     /**
      * All migrations in order.
      * Add new migrations to this array as the database evolves.
@@ -112,6 +118,7 @@ object DatabaseMigrations {
         MIGRATION_4_5,
         MIGRATION_5_6,
         MIGRATION_6_7,
-        MIGRATION_7_8
+        MIGRATION_7_8,
+        MIGRATION_8_9
     )
 }
