@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -58,6 +59,9 @@ import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewModelScope
 import com.vishaltelangre.nerdcalci.R
@@ -113,6 +117,8 @@ fun HomeScreen(
 ) {
     val context = LocalContext.current
     val files by viewModel.allFiles.collectAsState(initial = null)
+    val tagCounts by viewModel.tagCounts.collectAsState(initial = emptyList())
+    val activeTagFilter by viewModel.activeTagFilter.collectAsState()
     val fileSortCriteria by viewModel.fileSortCriteria.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
@@ -370,7 +376,7 @@ fun HomeScreen(
                     .fillMaxSize()
                     .padding(padding)
             )
-        } else if (files!!.isEmpty()) {
+        } else if (files!!.isEmpty() && activeTagFilter == null) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -505,7 +511,9 @@ fun HomeScreen(
                             coroutineScope = coroutineScope,
                             snackbarHostState = snackbarHostState,
                             context = context,
-                            viewModel = viewModel
+                            viewModel = viewModel,
+                            tagCounts = tagCounts,
+                            activeTagFilter = activeTagFilter
                         )
                     }
                 } else {
@@ -520,7 +528,9 @@ fun HomeScreen(
                         coroutineScope = coroutineScope,
                         snackbarHostState = snackbarHostState,
                         context = context,
-                        viewModel = viewModel
+                        viewModel = viewModel,
+                        tagCounts = tagCounts,
+                        activeTagFilter = activeTagFilter
                     )
                 }
             }
@@ -554,12 +564,58 @@ private fun HomeFileList(
     coroutineScope: CoroutineScope,
     snackbarHostState: SnackbarHostState,
     context: android.content.Context,
-    viewModel: CalculatorViewModel
+    viewModel: CalculatorViewModel,
+    tagCounts: List<Pair<String, Int>>,
+    activeTagFilter: String?
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 96.dp)
     ) {
+        if (tagCounts.isNotEmpty() || activeTagFilter != null) {
+            item {
+                LazyRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    val activeTagCount = if (activeTagFilter != null) {
+                        tagCounts.find { it.first == activeTagFilter }?.second ?: 0
+                    } else 0
+                    
+                    val displayTags = if (activeTagFilter != null && tagCounts.none { it.first == activeTagFilter }) {
+                        listOf(Pair(activeTagFilter, activeTagCount)) + tagCounts
+                    } else {
+                        tagCounts
+                    }
+                    items(displayTags) { (tag, count) ->
+                        FilterChip(
+                            selected = activeTagFilter == tag,
+                            onClick = {
+                                if (activeTagFilter == tag) {
+                                    viewModel.setTagFilter(null)
+                                } else {
+                                    viewModel.setTagFilter(tag)
+                                }
+                            },
+                            label = {
+                                Text(buildAnnotatedString {
+                                    withStyle(SpanStyle(color = MaterialTheme.colorScheme.primary)) {
+                                        append("#")
+                                    }
+                                    append(tag)
+                                    withStyle(SpanStyle(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))) {
+                                        append(" ($count)")
+                                    }
+                                })
+                            }
+                        )
+                    }
+                }
+            }
+        }
 
         if (visiblePinnedFiles.isNotEmpty()) {
             item { SectionHeader(title = "PINNED") }
